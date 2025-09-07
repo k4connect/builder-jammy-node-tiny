@@ -1,0 +1,35 @@
+description = "ARM64 Jammy Tiny-ish builder with Paketo Node"
+# keep the same stack ID as your images
+[stack]
+id = "io.buildpacks.stacks.jammy.tiny"
+build-image = "localhost:5000/build-jammy-tiny-arm64"
+run-image = "localhost:5000/run-jammy-tiny-arm64"
+
+[lifecycle]
+# Use a lifecycle compatible with your pack/func (0.20.x works with Platform API up to ~0.14)
+version = "0.20.13"
+
+# Paketo Node + helpers (pull these by id@version so pack fetches them)
+[[buildpacks]]
+uri = "urn:cnb:registry:paketo-buildpacks/ca-certificates@3.10.4"
+[[buildpacks]]
+uri = "urn:cnb:registry:paketo-buildpacks/environment-variables@4.9.3"
+[[buildpacks]]
+uri = "urn:cnb:registry:paketo-buildpacks/image-labels@4.10.2"
+[[buildpacks]]
+uri = "localhost:5000/node-engine-arm64-bp:1.0.0"
+[[buildpacks]]
+uri = "urn:cnb:registry:paketo-buildpacks/node-start@2.4.2"
+
+
+# Detection order(s)
+[[order]]
+  [[order.group]]
+  id = "k4connect/node-engine-arm64"
+  [[order.group]]
+  id = "paketo-buildpacks/node-start"
+  optional = true
+
+[[targets]]
+  arch = "arm64"
+  os = "linux"

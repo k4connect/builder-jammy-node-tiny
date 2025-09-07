@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ -f "${CNB_APP_DIR:-/workspace}/package.json" ]]; then
+  cat <<'EOF'
+[[provides]]
+name = "node"
+[[provides]]
+name = "npm"
+EOF
+  exit 0
+fi
+
+exit 100

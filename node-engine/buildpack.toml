@@ -1,0 +1,13 @@
+api = "0.8"
+
+[buildpack]
+id = "k4connect/node-engine-arm64"
+name = "Node Engine (ARM64)"
+version = "1.0.0"
+
+[metadata]
+# Optional, just for reference
+homepage = "https://nodejs.org"
+
+[[stacks]]
+id = "io.buildpacks.stacks.jammy.tiny"
