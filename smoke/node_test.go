@@ -13,7 +13,7 @@ import (
 	. "github.com/paketo-buildpacks/occam/matchers"
 )
 
-func testJava(t *testing.T, context spec.G, it spec.S) {
+func testNodejs(t *testing.T, context spec.G, it spec.S) {
 	var (
 		Expect     = NewWithT(t).Expect
 		Eventually = NewWithT(t).Eventually
@@ -27,7 +27,7 @@ func testJava(t *testing.T, context spec.G, it spec.S) {
 		docker = occam.NewDocker()
 	})
 
-	context("detects a Java app", func() {
+	context("detects a Nodejs app", func() {
 		var (
 			image     occam.Image
 			container occam.Container
@@ -51,14 +51,13 @@ func testJava(t *testing.T, context spec.G, it spec.S) {
 
 		it("builds successfully", func() {
 			var err error
-			// this is OK, the app also works for running with a JVM
-			source, err = occam.Source(filepath.Join("testdata", "java-native-image"))
+			source, err = occam.Source(filepath.Join("testdata", "nodejs"))
 			Expect(err).NotTo(HaveOccurred())
 
 			var logs fmt.Stringer
 			image, logs, err = pack.Build.
+				WithPullPolicy("never").
 				WithBuilder(Builder).
-				WithEnv(map[string]string{"BP_JVM_VERSION": "17"}).
 				Execute(name, source)
 			Expect(err).ToNot(HaveOccurred(), logs.String)
 
@@ -70,10 +69,9 @@ func testJava(t *testing.T, context spec.G, it spec.S) {
 
 			Eventually(container).Should(BeAvailable())
 
-			Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for BellSoft Liberica")))
-			Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for Maven")))
-			Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for Executable JAR")))
-			Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for Spring Boot")))
+			Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for Node Engine")))
+			Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for NPM Install")))
+			Expect(logs).To(ContainLines(ContainSubstring("Paketo Buildpack for NPM Start")))
 		})
 	})
 }

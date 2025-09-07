@@ -10,7 +10,7 @@ description = "Tiny base image (Ubuntu Jammy Jellyfish build image, distroless-l
 [[order]]
 
   [[order.group]]
-    id = "paketo-buildpacks/node"
+    id = "paketo-buildpacks/nodejs"
     version = "9.5.0"
 
 [stack]
