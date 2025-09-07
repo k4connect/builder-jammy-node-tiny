@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
+APP_DIR="${CNB_APP_DIR:-/workspace}"
 
-if [[ -f "${CNB_APP_DIR:-/workspace}/package.json" ]]; then
-  cat <<'EOF'
+if [[ -f "${APP_DIR}/package.json" ]]; then
+  cat <<'TOML'
 [[provides]]
 name = "node"
 [[provides]]
 name = "npm"
-EOF
+[[provides]]
+name = "node_modules"
+TOML
   exit 0
 fi
 

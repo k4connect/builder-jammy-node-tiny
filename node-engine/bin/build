@@ -1,30 +1,19 @@
 #!/usr/bin/env bash
-# CNB build phase: install ARM64 Node + npm install + layer node_modules for launch
 set -euo pipefail
 
-# ----- Paths -----
 LAYERS_DIR="${CNB_LAYERS_DIR:-/layers}"
 APP_DIR="${CNB_APP_DIR:-/workspace}"
 ENGINE_LAYER="${LAYERS_DIR}/node-engine"
 MODULES_LAYER="${LAYERS_DIR}/node-modules"
 
-# ----- Inputs / Defaults -----
 TARGET_OS="${CNB_TARGET_OS:-linux}"
 TARGET_ARCH="${CNB_TARGET_ARCH:-arm64}"
-NODE_VERSION_INPUT="${BP_NODE_VERSION:-22.*}"   # e.g., "22.*" or "22.19.0"
-NODE_ENV_RUNTIME="${NODE_ENV:-production}"
+NODE_VERSION_INPUT="${BP_NODE_VERSION:-22.*}"
 
 log() { printf "\e[1;34m[buildpack]\e[0m %s\n" "$*"; }
 
-# ----- tiny helper: copy directory tree without rsync -----
-copy_tree() {
-  # copy_tree <src> <dest>
-  local src="$1" dest="$2"
-  mkdir -p "$dest"
-  tar -C "$src" -cf - . | tar -C "$dest" -xf -
-}
+copy_tree() { mkdir -p "$2"; tar -C "$1" -cf - . | tar -C "$2" -xf -; }
 
-# ----- Resolve concrete Node version (pure shell) -----
 resolve_node_version() {
   local want="$1"
   if [[ "$want" == *"*"* ]]; then
@@ -49,24 +38,22 @@ log "Target OS/ARCH: ${TARGET_OS}/${TARGET_ARCH}"
 log "Resolved Node version: ${NODE_VERSION}"
 log "Download: ${NODE_URL}"
 
-# ----- Prepare layers -----
 rm -rf "${ENGINE_LAYER}" "${MODULES_LAYER}" 2>/dev/null || true
 mkdir -p "${ENGINE_LAYER}" "${MODULES_LAYER}"
 
-# node-engine layer.toml
+# node-engine layer metadata
 cat > "${ENGINE_LAYER}.toml" <<EOF
 [types]
 build = true
 launch = true
 cache = true
-
 [metadata]
 version = "${NODE_VERSION}"
 arch = "${TARGET_ARCH}"
 os = "${TARGET_OS}"
 EOF
 
-# modules layer.toml (launch-time)
+# node-modules layer metadata (launch only)
 cat > "${MODULES_LAYER}.toml" <<'EOF'
 [types]
 build = false
@@ -74,64 +61,52 @@ launch = true
 cache = true
 EOF
 
-# ----- Download & expand Node (ARM64) -----
+# --- Install Node (arm64)
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 curl -fL "${NODE_URL}" -o "${tmp}/${NODE_TARBALL}"
 tar -xJf "${tmp}/${NODE_TARBALL}" -C "${tmp}"
-
 mkdir -p "${ENGINE_LAYER}/node"
 copy_tree "${tmp}/node-v${NODE_VERSION}-${TARGET_OS}-${TARGET_ARCH}" "${ENGINE_LAYER}/node"
 
-# ----- Make Node available NOW (for this build step) -----
-export NODE_HOME="${ENGINE_LAYER}/node"
+# --- Expose Node/NPM for build & launch
+NODE_HOME="${ENGINE_LAYER}/node"
+mkdir -p "${ENGINE_LAYER}/env" "${ENGINE_LAYER}/env.launch"
+echo "${NODE_HOME}"            > "${ENGINE_LAYER}/env/NODE_HOME"
+echo "${NODE_HOME}"            > "${ENGINE_LAYER}/env.launch/NODE_HOME"
+# IMPORTANT: do not include ":$PATH" in the file; launcher will handle prepend
+echo "${NODE_HOME}/bin"        > "${ENGINE_LAYER}/env/PATH.prepend"
+echo "${NODE_HOME}/bin"        > "${ENGINE_LAYER}/env.launch/PATH.prepend"
+echo "--use-openssl-ca"        > "${ENGINE_LAYER}/env/NODE_OPTIONS.append"
+echo "--use-openssl-ca"        > "${ENGINE_LAYER}/env.launch/NODE_OPTIONS.append"
+
+# --- Make Node available during THIS build step
 export PATH="${NODE_HOME}/bin:${PATH}"
 
-# ----- Export env for subsequent buildpacks & launch -----
-mkdir -p "${ENGINE_LAYER}/env" "${ENGINE_LAYER}/env.launch"
-echo "${NODE_HOME}"                 > "${ENGINE_LAYER}/env/NODE_HOME"
-echo "${NODE_HOME}"                 > "${ENGINE_LAYER}/env.launch/NODE_HOME"
-echo "${NODE_HOME}/bin:\$PATH"      > "${ENGINE_LAYER}/env/PATH.prepend"
-echo "${NODE_HOME}/bin:\$PATH"      > "${ENGINE_LAYER}/env.launch/PATH.prepend"
-echo "--use-openssl-ca"             > "${ENGINE_LAYER}/env/NODE_OPTIONS.append"
-echo "--use-openssl-ca"             > "${ENGINE_LAYER}/env.launch/NODE_OPTIONS.append"
-echo "${ENGINE_LAYER}/.npm-cache"   > "${ENGINE_LAYER}/env/NPM_CONFIG_CACHE"
-mkdir -p "${ENGINE_LAYER}/.npm-cache"
-
-# Also expose layered node_modules at launch via NODE_PATH
-mkdir -p "${MODULES_LAYER}/env.launch"
-echo "${MODULES_LAYER}/node_modules:\$NODE_PATH" > "${MODULES_LAYER}/env.launch/NODE_PATH.prepend"
-
-# ----- Show Node info (for logs) -----
-node -v
-node -p "process.arch + ', ' + process.platform" || true
-npm -v || true
-
-# ----- Run npm install (replaces npm-install buildpack) -----
-if [[ -f "${APP_DIR}/package.json" ]]; then
-  log "Installing dependencies in ${APP_DIR} (NODE_ENV=${NODE_ENV_RUNTIME})"
-  pushd "${APP_DIR}" >/dev/null
-
-  NPM_FLAGS=(--no-progress --no-audit --fund=false)
-  if [[ "${NODE_ENV_RUNTIME}" == "production" ]]; then
-    NPM_FLAGS+=(--omit=dev)
-  fi
-
-  if [[ -f package-lock.json ]]; then
-    npm ci "${NPM_FLAGS[@]}"
-  else
-    npm install "${NPM_FLAGS[@]}"
-  fi
-
-  popd >/dev/null
-
-  # Layer node_modules for launch
-  mkdir -p "${MODULES_LAYER}/node_modules"
-  copy_tree "${APP_DIR}/node_modules" "${MODULES_LAYER}/node_modules"
+# --- NEW: Install production deps and layer node_modules
+if [[ -f "${APP_DIR}/package-lock.json" || -f "${APP_DIR}/npm-shrinkwrap.json" ]]; then
+  log "Running npm ci --omit=dev"
+  npm ci --omit=dev --prefix "${APP_DIR}"
 else
-  log "No package.json found in ${APP_DIR}; skipping npm install."
+  log "Running npm install --omit=dev"
+  npm install --omit=dev --prefix "${APP_DIR}"
 fi
 
-# ----- Minimal BOM (optional) -----
+mkdir -p "${MODULES_LAYER}/node_modules"
+# Copy app's node_modules into a launch layer
+if [[ -d "${APP_DIR}/node_modules" ]]; then
+  copy_tree "${APP_DIR}/node_modules" "${MODULES_LAYER}/node_modules"
+fi
+
+# Make layered node_modules discoverable at launch
+mkdir -p "${MODULES_LAYER}/env.launch"
+# Use NODE_PATH so require() can find layered modules
+echo "${MODULES_LAYER}/node_modules" > "${MODULES_LAYER}/env.launch/NODE_PATH.prepend"
+
+# --- Log versions
+node -v
+npm -v || true
+
+# (optional) BOM line for Node
 cat <<EOF
 [[bom]]
 name = "node"
