@@ -2,19 +2,19 @@ description = "ARM64 Jammy Tiny-ish builder with Paketo Node"
 
 [stack]
 id = "io.buildpacks.stacks.jammy.tiny"
-build-image = "localhost:5000/build-jammy-tiny-arm64"
-run-image   = "localhost:5000/run-jammy-tiny-arm64"
+build-image = "jonathank4/build-jammy-tiny-arm64"
+run-image   = "jonathank4/run-jammy-tiny-arm64"
 
 [lifecycle]
 version = "0.20.13"
 
 [[buildpacks]]
-id  = "k4connect/node-engine-arm64"
-uri = "localhost:5000/node-engine-arm64-bp:1.0.0"
+id  = "jonathank4/node-engine-arm64"
+uri = "jonathank4/node-engine-arm64:latest"
 
 [[order]]
   [[order.group]]
-  id = "k4connect/node-engine-arm64"
+  id = "jonathank4/node-engine-arm64"
 
 [[targets]]
 arch = "arm64"

@@ -1,7 +1,7 @@
 api = "0.8"
 
 [buildpack]
-id = "k4connect/node-engine-arm64"
+id = "jonathank4/node-engine-arm64"
 name = "Node Engine (ARM64)"
 version = "1.0.0"
 
