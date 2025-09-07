@@ -3,6 +3,10 @@
 For arm64, we need an arm64 build of `builder-jammy-tiny`
 
 ```
+docker run --rm -d -p 5000:5000 --name "builder_test_registry" "registry:2.7"
+```
+
+```
 export DOCKER_DEFAULT_PLATFORM=linux/arm64
 docker buildx build --platform linux/arm64 \
   -t localhost:5000/run-jammy-tiny-arm64 -f run.Dockerfile --push .
