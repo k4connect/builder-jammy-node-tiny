@@ -1,4 +1,4 @@
-module github.com/paketo-buildpacks/builder-jammy-java-tiny
+module github.com/paketo-buildpacks/builder-jammy-node-tiny
 
 go 1.24.6
 

@@ -1,23 +1,23 @@
-# Paketo Jammy Java Tiny Builder
+# Paketo Jammy node Tiny Builder
 
-## `paketobuildpacks/builder-jammy-java-tiny`
+## `paketobuildpacks/builder-jammy-node-tiny`
 
 This builder uses the [Paketo Jammy Tiny
 Stack](https://github.com/paketo-buildpacks/jammy-tiny-stack) (Ubuntu Jammy
 Jellyfish build image, distroless-like run image) and contains 
-**only Java composite buildpacks**. To use this builder, 
+**only node composite buildpacks**. To use this builder, 
 you must specify buildpacks at build
 time using whatever mechanisms your CNB platform of choice offers.
 
 For example, with the `pack` CLI, use `--buildpack` as follows:
 ```
-pack build great-java-app \
-    --builder paketobuildpacks/builder-jammy-java-tiny:latest
+pack build great-node-app \
+    --builder paketobuildpacks/builder-jammy-node-tiny:latest
 ```
 
 To see which versions of build and run images and the lifecycle are in a given
 builder version, see the
-[Releases](https://github.com/paketo-buildpacks/builder-jammy-java-tiny/releases)
+[Releases](https://github.com/paketo-buildpacks/builder-jammy-node-tiny/releases)
 on this repository. This information is also available in the `builder.toml`.
 
 For more information about this builder and how to use it, visit the [Paketo
